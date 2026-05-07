@@ -222,8 +222,8 @@
 </head>
 <body>
 
-<h1>Cause & Effect</h1>
-<p class="subtitle">Click a cause, then click its matching effect.</p>
+<h1>Chemical Exposure</h1>
+<p class="subtitle">Match each chemical to how you can be exposed to it.</p>
 
 <div class="score-bar">
   <div>Matched: <span id="matched-count">0</span> / <span id="total-count">0</span></div>
@@ -232,13 +232,13 @@
 
 <div class="game-area" id="game-area">
   <div class="column col-cause" id="col-cause">
-    <div class="column-label">Cause</div>
+    <div class="column-label">Chemical</div>
   </div>
   <div class="mid-divider">
     <svg id="lines-svg"></svg>
   </div>
   <div class="column col-effect" id="col-effect">
-    <div class="column-label">Effect</div>
+    <div class="column-label">How Exposed</div>
   </div>
 </div>
 
@@ -251,18 +251,34 @@
 <div id="feedback"></div>
 
 <script>
-const PAIRS = [
-  { cause: "It rained heavily all night",          effect: "The streets flooded" },
-  { cause: "She studied hard every day",            effect: "She passed the exam with top marks" },
-  { cause: "The campfire was left unattended",      effect: "A wildfire broke out" },
-  { cause: "He ate expired food",                   effect: "He got food poisoning" },
-  { cause: "The window was left open in winter",    effect: "The room became freezing cold" },
-  { cause: "Deforestation removed tree roots",      effect: "Soil erosion increased rapidly" },
-  { cause: "The phone battery was never charged",   effect: "The phone shut down completely" },
-  { cause: "Carbon emissions raised global temps",  effect: "Arctic ice caps began melting" },
+const GROUPS = [
+  { chemical: "Lead", exposures: [
+    "Contact with old pipes or sewage waste",
+  ]},
+  { chemical: "Mercury", exposures: [
+    "Breathing dust from mining operations",
+    "Eating swordfish, shark, or marlin",
+    "Using some skin-lightening creams",
+  ]},
+  { chemical: "Arsenic", exposures: [
+    "Drinking or eating contaminated food or water",
+    "Breathing contaminated dust or fumes",
+  ]},
+  { chemical: "Pesticides", exposures: [
+    "Not washing hands after applying to plants",
+    "Mixing pesticides without a respirator",
+  ]},
+  { chemical: "Hydrogen Sulfide", exposures: [
+    "Breathing rotten egg-smelling contaminated air",
+    "Breathing air near landfills or factories",
+  ]},
+  { chemical: "PFAS", exposures: [
+    "Drinking contaminated water or eating fish from it",
+    "Eating food grown near contaminated sites",
+  ]},
 ];
 
-let selected = null;   // { type: 'cause'|'effect', id, el }
+let selected = null;
 let matched  = new Set();
 let mistakes = 0;
 let pairs    = [];
@@ -280,7 +296,11 @@ function init() {
   selected = null;
   matched  = new Set();
   mistakes = 0;
-  pairs    = shuffle(PAIRS).slice(0, 6); // pick 6 random pairs each game
+  // Pick one random exposure per chemical each game
+  pairs = GROUPS.map(g => ({
+    cause: g.chemical,
+    effect: g.exposures[Math.floor(Math.random() * g.exposures.length)],
+  }));
 
   document.getElementById('matched-count').textContent = '0';
   document.getElementById('total-count').textContent   = pairs.length;
