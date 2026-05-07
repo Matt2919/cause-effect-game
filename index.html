@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cause & Effect</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: #64748b;
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+
+    .score-bar {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+      color: #94a3b8;
+    }
+
+    .score-bar span { font-weight: 600; color: #e2e8f0; }
+
+    .game-area {
+      display: flex;
+      gap: 0;
+      width: 100%;
+      max-width: 820px;
+      position: relative;
+    }
+
+    .column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .column-label {
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 0.5rem;
+    }
+
+    .col-cause .column-label { color: #60a5fa; }
+    .col-effect .column-label { color: #f472b6; }
+
+    .card {
+      padding: 0.9rem 1.1rem;
+      border-radius: 10px;
+      border: 2px solid #1e293b;
+      background: #1e293b;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+      font-size: 0.88rem;
+      line-height: 1.4;
+      user-select: none;
+      position: relative;
+    }
+
+    .card:hover:not(.matched):not(.wrong-flash) {
+      border-color: #334155;
+      background: #253047;
+      transform: translateY(-1px);
+    }
+
+    .card.selected {
+      border-color: #60a5fa;
+      background: #1d2d45;
+    }
+
+    .col-effect .card.selected {
+      border-color: #f472b6;
+      background: #2d1d2e;
+    }
+
+    .card.matched {
+      border-color: #22c55e;
+      background: #14291b;
+      color: #86efac;
+      cursor: default;
+      opacity: 0.75;
+    }
+
+    .card.wrong-flash {
+      border-color: #ef4444;
+      background: #2d1414;
+      animation: shake 0.35s ease;
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+
+    /* SVG overlay for connection lines */
+    #lines-svg {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .connector-line {
+      stroke-width: 2.5;
+      fill: none;
+      stroke-dasharray: 6 4;
+      animation: dash 1s linear infinite;
+    }
+
+    .connector-line.pending {
+      stroke: #60a5fa;
+      opacity: 0.6;
+    }
+
+    .connector-line.correct {
+      stroke: #22c55e;
+      stroke-dasharray: none;
+      opacity: 0.55;
+    }
+
+    @keyframes dash {
+      to { stroke-dashoffset: -20; }
+    }
+
+    .mid-divider {
+      width: 140px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Feedback banner */
+    #feedback {
+      position: fixed;
+      top: 1.2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(-80px);
+      background: #1e293b;
+      border: 1.5px solid #334155;
+      border-radius: 8px;
+      padding: 0.6rem 1.4rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
+      z-index: 100;
+      white-space: nowrap;
+    }
+
+    #feedback.show { transform: translateX(-50%) translateY(0); }
+    #feedback.good { border-color: #22c55e; color: #86efac; }
+    #feedback.bad  { border-color: #ef4444; color: #fca5a5; }
+
+    /* Win screen */
+    #win-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 2rem;
+      text-align: center;
+    }
+
+    #win-screen.show { display: flex; }
+
+    #win-screen h2 {
+      font-size: 2rem;
+      background: linear-gradient(135deg, #22c55e, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    #win-screen p { color: #94a3b8; font-size: 0.9rem; }
+
+    button.restart {
+      margin-top: 0.5rem;
+      padding: 0.7rem 1.8rem;
+      border-radius: 8px;
+      border: none;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      color: #0f1117;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    button.restart:hover { opacity: 0.85; }
+
+    .check-icon { font-size: 1.1rem; position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); }
+  </style>
+</head>
+<body>
+
+<h1>Cause & Effect</h1>
+<p class="subtitle">Click a cause, then click its matching effect.</p>
+
+<div class="score-bar">
+  <div>Matched: <span id="matched-count">0</span> / <span id="total-count">0</span></div>
+  <div>Mistakes: <span id="mistake-count">0</span></div>
+</div>
+
+<div class="game-area" id="game-area">
+  <div class="column col-cause" id="col-cause">
+    <div class="column-label">Cause</div>
+  </div>
+  <div class="mid-divider">
+    <svg id="lines-svg"></svg>
+  </div>
+  <div class="column col-effect" id="col-effect">
+    <div class="column-label">Effect</div>
+  </div>
+</div>
+
+<div id="win-screen">
+  <h2>🎉 All matched!</h2>
+  <p id="win-msg"></p>
+  <button class="restart" onclick="init()">Play Again</button>
+</div>
+
+<div id="feedback"></div>
+
+<script>
+const PAIRS = [
+  { cause: "It rained heavily all night",          effect: "The streets flooded" },
+  { cause: "She studied hard every day",            effect: "She passed the exam with top marks" },
+  { cause: "The campfire was left unattended",      effect: "A wildfire broke out" },
+  { cause: "He ate expired food",                   effect: "He got food poisoning" },
+  { cause: "The window was left open in winter",    effect: "The room became freezing cold" },
+  { cause: "Deforestation removed tree roots",      effect: "Soil erosion increased rapidly" },
+  { cause: "The phone battery was never charged",   effect: "The phone shut down completely" },
+  { cause: "Carbon emissions raised global temps",  effect: "Arctic ice caps began melting" },
+];
+
+let selected = null;   // { type: 'cause'|'effect', id, el }
+let matched  = new Set();
+let mistakes = 0;
+let pairs    = [];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function init() {
+  selected = null;
+  matched  = new Set();
+  mistakes = 0;
+  pairs    = shuffle(PAIRS).slice(0, 6); // pick 6 random pairs each game
+
+  document.getElementById('matched-count').textContent = '0';
+  document.getElementById('total-count').textContent   = pairs.length;
+  document.getElementById('mistake-count').textContent = '0';
+  document.getElementById('win-screen').classList.remove('show');
+
+  const causeCol  = document.getElementById('col-cause');
+  const effectCol = document.getElementById('col-effect');
+
+  // clear old cards (keep label)
+  [...causeCol.querySelectorAll('.card')].forEach(c => c.remove());
+  [...effectCol.querySelectorAll('.card')].forEach(c => c.remove());
+  document.getElementById('lines-svg').innerHTML = '';
+
+  const shuffledEffects = shuffle(pairs);
+
+  pairs.forEach((p, i) => {
+    const cCard = makeCard('cause', i, p.cause);
+    const eCard = makeCard('effect', i, shuffledEffects[i].effect);
+    // store which pair index the effect card actually belongs to
+    eCard.dataset.pairId = pairs.findIndex(x => x.effect === shuffledEffects[i].effect);
+    causeCol.appendChild(cCard);
+    effectCol.appendChild(eCard);
+  });
+
+  // Fix cause card pairIds
+  causeCol.querySelectorAll('.card').forEach((c, i) => { c.dataset.pairId = i; });
+}
+
+function makeCard(type, index, text) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.dataset.type   = type;
+  el.dataset.index  = index;
+  el.textContent    = text;
+  el.addEventListener('click', () => onCardClick(el));
+  return el;
+}
+
+function onCardClick(el) {
+  if (el.classList.contains('matched')) return;
+
+  const type   = el.dataset.type;
+  const pairId = parseInt(el.dataset.pairId);
+
+  // Deselect if clicking the same card
+  if (selected && selected.el === el) {
+    selected.el.classList.remove('selected');
+    selected = null;
+    clearPendingLine();
+    return;
+  }
+
+  // If selecting within same column, swap selection
+  if (selected && selected.type === type) {
+    selected.el.classList.remove('selected');
+    clearPendingLine();
+  }
+
+  el.classList.add('selected');
+
+  if (!selected || selected.type === type) {
+    selected = { type, pairId, el };
+    return;
+  }
+
+  // We have one of each type — check match
+  const causeEl  = type === 'cause'  ? el : selected.el;
+  const effectEl = type === 'effect' ? el : selected.el;
+  const causePid = parseInt(causeEl.dataset.pairId);
+  const effectPid= parseInt(effectEl.dataset.pairId);
+
+  causeEl.classList.remove('selected');
+  effectEl.classList.remove('selected');
+  clearPendingLine();
+
+  if (causePid === effectPid) {
+    // Correct!
+    causeEl.classList.add('matched');
+    effectEl.classList.add('matched');
+    const check1 = document.createElement('span');
+    check1.className = 'check-icon'; check1.textContent = '✓';
+    const check2 = document.createElement('span');
+    check2.className = 'check-icon'; check2.textContent = '✓';
+    causeEl.appendChild(check1);
+    effectEl.appendChild(check2);
+    matched.add(causePid);
+    drawLine(causeEl, effectEl, true);
+    showFeedback('✓ Correct!', 'good');
+    document.getElementById('matched-count').textContent = matched.size;
+    if (matched.size === pairs.length) setTimeout(showWin, 600);
+  } else {
+    // Wrong
+    mistakes++;
+    document.getElementById('mistake-count').textContent = mistakes;
+    flashWrong(causeEl);
+    flashWrong(effectEl);
+    showFeedback('✗ Not quite — try again', 'bad');
+  }
+
+  selected = null;
+}
+
+function flashWrong(el) {
+  el.classList.add('wrong-flash');
+  setTimeout(() => el.classList.remove('wrong-flash'), 400);
+}
+
+let pendingLine = null;
+function clearPendingLine() {
+  if (pendingLine) { pendingLine.remove(); pendingLine = null; }
+}
+
+function drawLine(fromEl, toEl, correct) {
+  const svg    = document.getElementById('lines-svg');
+  const area   = document.getElementById('game-area');
+  const areaR  = area.getBoundingClientRect();
+  const fromR  = fromEl.getBoundingClientRect();
+  const toR    = toEl.getBoundingClientRect();
+
+  const x1 = fromR.right  - areaR.left;
+  const y1 = fromR.top    - areaR.top  + fromR.height / 2;
+  const x2 = toR.left     - areaR.left;
+  const y2 = toR.top      - areaR.top  + toR.height  / 2;
+
+  const cx1 = x1 + (x2 - x1) * 0.45;
+  const cx2 = x2 - (x2 - x1) * 0.45;
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`);
+  path.classList.add('connector-line', correct ? 'correct' : 'pending');
+  svg.appendChild(path);
+  if (!correct) pendingLine = path;
+  return path;
+}
+
+let feedbackTimer = null;
+function showFeedback(msg, cls) {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.className   = `show ${cls}`;
+  clearTimeout(feedbackTimer);
+  feedbackTimer = setTimeout(() => { el.className = ''; }, 1800);
+}
+
+function showWin() {
+  document.getElementById('win-screen').classList.add('show');
+  document.getElementById('win-msg').textContent =
+    `You made ${mistakes} mistake${mistakes !== 1 ? 's' : ''}.`;
+}
+
+init();
+</script>
+</body>
+</html>
