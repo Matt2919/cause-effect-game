@@ -321,7 +321,11 @@ function init() {
 
   pairs.forEach((p, i) => {
     const cCard = makeCard('cause', p.id, p.cause);
+    cCard.dataset.pairId = p.id;
+
     const eCard = makeCard('effect', effectOrder[i].id, effectOrder[i].effect);
+    eCard.dataset.pairId = effectOrder[i].id;
+
     causeCol.appendChild(cCard);
     effectCol.appendChild(eCard);
   });
