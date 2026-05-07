@@ -238,7 +238,7 @@
     <svg id="lines-svg"></svg>
   </div>
   <div class="column col-effect" id="col-effect">
-    <div class="column-label">How Exposed</div>
+    <div class="column-label">How You Can Be Exposed</div>
   </div>
 </div>
 
@@ -257,8 +257,8 @@ const GROUPS = [
   ]},
   { chemical: "Mercury", exposures: [
     "Breathing dust from mining operations",
-    "Eating large amounts of swordfish, shark, or marlin",
-    "Using large amounts of some skin-lightening creams",
+    "Eating swordfish, shark, or marlin",
+    "Using some skin-lightening creams",
   ]},
   { chemical: "Arsenic", exposures: [
     "Drinking or eating contaminated food or water",
@@ -296,8 +296,9 @@ function init() {
   selected = null;
   matched  = new Set();
   mistakes = 0;
-  // Pick one random exposure per chemical each game
-  pairs = GROUPS.map(g => ({
+  // Pick one random exposure per chemical each game; assign stable IDs
+  pairs = GROUPS.map((g, id) => ({
+    id,
     cause: g.chemical,
     effect: g.exposures[Math.floor(Math.random() * g.exposures.length)],
   }));
@@ -315,19 +316,15 @@ function init() {
   [...effectCol.querySelectorAll('.card')].forEach(c => c.remove());
   document.getElementById('lines-svg').innerHTML = '';
 
-  const shuffledEffects = shuffle(pairs);
+  // Shuffle effect cards independently so right column order differs from left
+  const effectOrder = shuffle([...pairs]);
 
   pairs.forEach((p, i) => {
-    const cCard = makeCard('cause', i, p.cause);
-    const eCard = makeCard('effect', i, shuffledEffects[i].effect);
-    // store which pair index the effect card actually belongs to
-    eCard.dataset.pairId = pairs.findIndex(x => x.effect === shuffledEffects[i].effect);
+    const cCard = makeCard('cause', p.id, p.cause);
+    const eCard = makeCard('effect', effectOrder[i].id, effectOrder[i].effect);
     causeCol.appendChild(cCard);
     effectCol.appendChild(eCard);
   });
-
-  // Fix cause card pairIds
-  causeCol.querySelectorAll('.card').forEach((c, i) => { c.dataset.pairId = i; });
 }
 
 function makeCard(type, index, text) {
